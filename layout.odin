@@ -12,9 +12,10 @@ appends `tail`. It never splits a grapheme or an escape sequence, so the result
 can be narrower than `max_width` when a two-column character does not fit in
 the last column. When `tail` alone is wider than `max_width`, truncate drops it.
 
-Escape sequences before the cut stay in place. When the kept text ends with a
-color or style still active, truncate appends RESET after `tail`, so the style
-does not leak into whatever the terminal prints next.
+Escape sequences before the cut stay in place. When the kept text ends inside
+an OSC 8 hyperlink, truncate closes the link after `tail`. When it ends with a
+color or style still active, truncate then appends RESET. Neither leaks into
+whatever the terminal prints next.
 
 Inputs:
 - s: the text to shorten; it may contain ANSI escape sequences.
@@ -58,12 +59,15 @@ truncate :: proc(
 	}
 	used := 0
 	styled := false
+	linked := false
 	rest := s
 	for len(rest) > 0 {
 		tok := next_token(rest)
 		if tok.kind == .Escape {
 			if is_sgr(tok.text) {
 				styled = !is_sgr_reset(tok.text)
+			} else if uri, ok := hyperlink_uri(tok.text); ok {
+				linked = uri != ""
 			}
 		} else if used + tok.width > budget {
 			break
@@ -73,11 +77,41 @@ truncate :: proc(
 		rest = rest[len(tok.text):]
 	}
 	append(&buf, tail) or_return
+	if linked {
+		append(&buf, HYPERLINK_END) or_return
+	}
 	if styled {
 		append(&buf, RESET) or_return
 	}
 	shrink(&buf) or_return
 	return string(buf[:]), nil
+}
+
+// HYPERLINK_END is the OSC 8 sequence that closes a hyperlink.
+@(private = "file")
+HYPERLINK_END :: "\x1b]8;;\x1b\\"
+
+/*
+hyperlink_uri returns the URI of the OSC 8 escape `seq`, and whether `seq` is
+an OSC 8 sequence at all. An empty URI closes the current hyperlink.
+*/
+@(private = "file")
+hyperlink_uri :: proc(seq: string) -> (uri: string, ok: bool) {
+	body := strings.trim_prefix(seq, "\x1b]8;")
+	if len(body) == len(seq) {
+		return "", false
+	}
+	if strings.has_suffix(body, "\x1b\\") {
+		body = body[:len(body) - 2]
+	} else if strings.has_suffix(body, "\x07") {
+		body = body[:len(body) - 1]
+	}
+	// The parameters come first and end at the first semicolon.
+	semi := strings.index_byte(body, ';')
+	if semi < 0 {
+		return "", true
+	}
+	return body[semi + 1:], true
 }
 
 /*

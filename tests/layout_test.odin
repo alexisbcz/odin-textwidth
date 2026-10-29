@@ -203,3 +203,22 @@ test_pad_empty_string :: proc(t: ^testing.T) {
 	defer delete(s)
 	testing.expect_value(t, s, "   ")
 }
+
+@(test)
+test_truncate_closes_open_hyperlink :: proc(t: ^testing.T) {
+	// Cutting inside an OSC 8 hyperlink drops its closing sequence, so
+	// truncate must close the link itself or it leaks into later output.
+	a := textwidth.truncate("\x1b]8;;https://odin-lang.org\x1b\\hyperlink\x1b]8;;\x1b\\", 5)
+	defer delete(a)
+	testing.expect_value(t, a, "\x1b]8;;https://odin-lang.org\x1b\\hype…\x1b]8;;\x1b\\")
+
+	// A BEL-terminated link and a color are both closed.
+	b := textwidth.truncate("\x1b[1m\x1b]8;id=1;https://x.org\x07link text\x1b]8;;\x07\x1b[0m", 3)
+	defer delete(b)
+	testing.expect_value(t, b, "\x1b[1m\x1b]8;id=1;https://x.org\x07li…\x1b]8;;\x1b\\\x1b[0m")
+
+	// A link that closed before the cut needs nothing extra.
+	c := textwidth.truncate("\x1b]8;;https://x.org\x1b\\ab\x1b]8;;\x1b\\cdef", 4)
+	defer delete(c)
+	testing.expect_value(t, c, "\x1b]8;;https://x.org\x1b\\ab\x1b]8;;\x1b\\c…")
+}

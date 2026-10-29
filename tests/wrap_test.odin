@@ -193,3 +193,13 @@ test_wrap_trim_trailing_space :: proc(t: ^testing.T) {
 test_wrap_invalid_utf8 :: proc(t: ^testing.T) {
 	expect_lines(t, "\xff\xfe \xfd", 2, {"\xff\xfe", "\xfd"})
 }
+
+@(test)
+test_wrap_zero_width_word_stays_on_line :: proc(t: ^testing.T) {
+	// A trailing reset after a space has no width, so it must not start a
+	// line of its own that looks blank.
+	expect_lines(t, "hello \x1b[0m", 5, {"hello\x1b[0m"})
+	expect_lines(t, "\x1b[31mhello world \x1b[0m", 5, {"\x1b[31mhello", "world\x1b[0m"})
+	// When it fits, the space before it stays.
+	expect_lines(t, "ab \x1b[0m", 5, {"ab \x1b[0m"})
+}

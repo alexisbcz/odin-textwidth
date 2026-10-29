@@ -398,6 +398,11 @@ place_word :: proc(
 		push(wr, space, space_width) or_return
 		return push(wr, word, word_width)
 	}
+	if word_width == 0 {
+		// The space does not fit, but a word with no width, such as a color
+		// reset, belongs on this line rather than on a line that looks blank.
+		return push(wr, word, 0)
+	}
 	if word_width <= wr.max_width - wr.hang_width {
 		new_line(wr, first_line) or_return
 		return push(wr, word, word_width)

@@ -88,7 +88,7 @@ Every allocating procedure returns `(result, runtime.Allocator_Error)` with `#op
 
 ## Wrapping
 
-`wrap` puts as many words on a line as fit and drops the whitespace where it breaks. A word longer than a line continues on the next one, cut between graphemes, which also wraps CJK text that has no spaces. Each newline in the input ends a paragraph, so blank lines stay blank. A grapheme wider than the whole line, such as `日` at width 1, gets a line of its own.
+`wrap` puts as many words on a line as fit and drops the whitespace where it breaks. It breaks on spaces, tabs and Unicode spaces such as U+3000 IDEOGRAPHIC SPACE, but not on no-break spaces. A word longer than a line continues on the next one, cut between graphemes, which also wraps CJK text that has no spaces. Each newline in the input ends a paragraph, so blank lines stay blank. A grapheme wider than the whole line, such as `日` at width 1, gets a line of its own.
 
 ```odin
 opts := textwidth.Wrap_Options {

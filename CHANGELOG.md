@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-29
+
+### Fixed
+
+- `truncate` now closes an OSC 8 hyperlink that the cut leaves open, so the link no longer spans everything the terminal prints next.
+- `wrap` keeps a word with no width, such as a color reset after a space, on the current line instead of giving it a line that looks blank.
+- `wrap` now breaks on Unicode spaces such as U+3000 IDEOGRAPHIC SPACE and U+2003 EM SPACE, counts their real width, and trims them with `trim_trailing_space`. No-break spaces still join words.
+
 ## [0.1.0] - 2026-10-29
 
 ### Added
@@ -17,5 +25,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - `wrap` and `wrap_destroy` wrap text greedily on whitespace, hard-break long words and keep existing newlines. `Wrap_Options` sets the indent, the hanging indent and trailing-space trimming.
 - `tools/gentables` regenerates the width tables from the Unicode Character Database.
 
-[Unreleased]: https://github.com/alexisbcz/odin-textwidth/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/alexisbcz/odin-textwidth/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/alexisbcz/odin-textwidth/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/alexisbcz/odin-textwidth/releases/tag/v0.1.0

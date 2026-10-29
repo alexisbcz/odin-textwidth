@@ -11,6 +11,7 @@
 [Dd]ev
 [Ee]moji
 [Ee]num(s)?
+[Ff]ullwidth
 [Gg]oroutine(s)?
 [Gg]rapheme(s)?
 [Hh]angul
@@ -19,6 +20,7 @@
 [Ii]nterop
 [Ii]terator(s)?
 [Jj]amo
+[Kk]eycap(s)?
 [Ll]inter(s)?
 [Mm]iddleware
 [Mm]onorepo

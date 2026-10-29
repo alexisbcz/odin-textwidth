@@ -2,6 +2,7 @@ package textwidth
 
 import "base:runtime"
 import "core:strings"
+import "core:unicode/utf8"
 
 /*
 truncate shortens `s` so that it takes at most `max_width` columns.
@@ -170,15 +171,18 @@ Wrap_Options :: struct {
 	indent:              string,
 	// hanging_indent starts every line that wrap creates inside a paragraph.
 	hanging_indent:      string,
-	// trim_trailing_space removes spaces and tabs from the end of every line.
+	// trim_trailing_space removes the whitespace that wrap breaks on from the end of every line.
 	trim_trailing_space: bool,
 }
 
 /*
 wrap breaks `s` into lines that take at most `max_width` columns.
 
-wrap is greedy: it puts as many words on a line as fit, and breaks at spaces
-and tabs. The whitespace at a break disappears. A word longer than a whole line
+wrap is greedy: it puts as many words on a line as fit, and breaks at
+whitespace: spaces, tabs and the Unicode spaces such as U+3000 IDEOGRAPHIC
+SPACE. No-break spaces (U+00A0, U+2007 and U+202F) join words instead. The
+whitespace at a break disappears. A word with no width, such as a lone color
+reset, never starts a line of its own. A word longer than a whole line
 continues on the next line, cut between graphemes. Existing newlines stay: each
 one ends a paragraph, and an empty paragraph gives an empty line. A trailing
 carriage return before a newline is dropped.
@@ -269,9 +273,32 @@ Wrapper :: struct {
 	allocator:    runtime.Allocator,
 }
 
+// is_break_rune reports whether wrap may break a line at `r`: the Unicode
+// White_Space characters of general category Zs, except no-break spaces, and tab.
 @(private = "file")
-is_break_space :: proc "contextless" (tok: Token) -> bool {
-	return tok.kind == .Grapheme && (tok.text == " " || tok.text == "\t")
+is_break_rune :: proc(r: rune) -> bool {
+	switch r {
+	case ' ', '\t', 0x1680, 0x2000 ..= 0x2006, 0x2008 ..= 0x200A, 0x205F, 0x3000:
+		return true
+	}
+	return false
+}
+
+// is_break_space reports whether `tok` is a single breaking whitespace character.
+@(private = "file")
+is_break_space :: proc(tok: Token) -> bool {
+	if tok.kind != .Grapheme {
+		return false
+	}
+	r, n := utf8.decode_rune_in_string(tok.text)
+	return n == len(tok.text) && is_break_rune(r)
+}
+
+// space_columns returns the columns that wrap counts for the whitespace `tok`;
+// a tab counts as one.
+@(private = "file")
+space_columns :: proc "contextless" (tok: Token) -> int {
+	return max(tok.width, 1)
 }
 
 @(private = "file")
@@ -287,7 +314,7 @@ start_line :: proc(wr: ^Wrapper, first: bool) -> runtime.Allocator_Error {
 flush_line :: proc(wr: ^Wrapper) -> runtime.Allocator_Error {
 	line := string(wr.buf[:])
 	if wr.options.trim_trailing_space {
-		line = strings.trim_right(line, " \t")
+		line = strings.trim_right_proc(line, is_break_rune)
 	}
 	owned := strings.clone(line, wr.allocator) or_return
 	if _, err := append(&wr.lines, owned); err != nil {
@@ -344,7 +371,7 @@ wrap_paragraph :: proc(wr: ^Wrapper, para: string) -> runtime.Allocator_Error {
 			if !is_break_space(tok) {
 				break
 			}
-			space_width += 1
+			space_width += space_columns(tok)
 			rest = rest[len(tok.text):]
 		}
 		space = start[:len(start) - len(rest)]

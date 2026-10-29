@@ -203,3 +203,15 @@ test_wrap_zero_width_word_stays_on_line :: proc(t: ^testing.T) {
 	// When it fits, the space before it stays.
 	expect_lines(t, "ab \x1b[0m", 5, {"ab \x1b[0m"})
 }
+
+@(test)
+test_wrap_breaks_on_unicode_spaces :: proc(t: ^testing.T) {
+	// U+3000 IDEOGRAPHIC SPACE takes two columns; U+2003 EM SPACE takes one.
+	expect_lines(t, "日本　語です　テスト", 6, {"日本", "語です", "テスト"})
+	expect_lines(t, "ab cd ef", 5, {"ab cd", "ef"})
+	// No-break spaces still join words.
+	expect_lines(t, "a b c", 3, {"a b", "c"})
+	expect_lines(t, "a b c", 3, {"a b", "c"})
+	// Trimming removes Unicode spaces too.
+	expect_lines(t, "ab　", 4, {"ab"}, {trim_trailing_space = true})
+}
